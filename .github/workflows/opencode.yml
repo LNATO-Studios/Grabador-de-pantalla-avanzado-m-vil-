@@ -165,7 +165,7 @@ jobs:
           }
           EOF
 
-      - name: Deduplicar PR abierto existente
+            - name: Deduplicar PR abierto existente
         id: dedupe
         if: needs.guard.outputs.is_pr != 'true'
         env:
@@ -174,6 +174,7 @@ jobs:
           REPO: ${{ github.repository }}
           RUN_ID: ${{ github.run_id }}
         run: |
+          echo "Buscando PRs abiertos opencode/issue${ISSUE_NUMBER}-* ..."
           EXISTING=$(gh api "repos/${REPO}/pulls?state=open&per_page=100" --jq \
             "[.[] | select(.head.ref | startswith(\"opencode/issue${ISSUE_NUMBER}-\")) | {number, head: .head.ref}] | sort_by(.number) | reverse | .[0].number // empty")
           if [ -n "$EXISTING" ]; then
@@ -185,6 +186,7 @@ jobs:
             echo "skip=false" >> "$GITHUB_OUTPUT"
             echo "Sin PR previo: se procede a crear uno."
           fi
+         
 
       - name: Reaccionar al comentario (acuse de recibo)
         if: steps.dedupe.outputs.skip != 'true' && github.event_name != 'issues'
