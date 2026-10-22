@@ -7,6 +7,16 @@ on:
         description: 'Activar caché (Qt/Gradle)'
         type: boolean
         default: false
+      build_type:
+        description: 'Tipo de build'
+        type: choice
+        options:
+          - Release
+          - Debug
+        default: Release
+
+permissions:
+  contents: read
 
 jobs:
   build:
@@ -30,7 +40,7 @@ jobs:
 
       - name: Install Android NDK y build-tools
         run: |
-          set -e
+          set -euo pipefail
           yes | sdkmanager --licenses >/dev/null 2>&1 || true
           sdkmanager "platforms;android-34" "build-tools;34.0.0" "ndk;26.1.10909125"
           echo "ANDROID_NDK_ROOT=$ANDROID_SDK_ROOT/ndk/26.1.10909125" >> "$GITHUB_ENV"
@@ -47,33 +57,89 @@ jobs:
 
       - name: Configure (CMake)
         run: |
-          set -e
+          set -euo pipefail
+
           QT_ROOT="${QT_ROOT_DIR:-${{ steps.qt.outputs.qt-root-dir }}}"
-          if [ -z "$QT_ROOT" ] || [ ! -d "$QT_ROOT" ]; then
+          if [ -z "${QT_ROOT}" ] || [ ! -d "${QT_ROOT}" ]; then
             QT_ROOT="${RUNNER_WORKSPACE}/Qt/6.8.3/android_arm64_v8a"
           fi
+          if [ ! -d "${QT_ROOT}" ]; then
+            echo "::error::No se encontró Qt root en ${QT_ROOT}" >&2
+            exit 1
+          fi
+
           QT_HOST="${QT_HOST_PATH:-${{ steps.qt.outputs.qt-host-path }}}"
-          if [ -z "$QT_HOST" ] || [ ! -d "$QT_HOST" ]; then
+          if [ -z "${QT_HOST}" ] || [ ! -d "${QT_HOST}" ]; then
             QT_HOST="${RUNNER_WORKSPACE}/Qt/6.8.3/gcc_64"
           fi
-          echo "QT_ROOT=$QT_ROOT"
-          echo "QT_HOST=$QT_HOST"
-          QT_CMAKE="$QT_ROOT/bin/qt-cmake"
-          if [ ! -x "$QT_CMAKE" ]; then
-            QT_CMAKE="$(command -v qt-cmake)"
+          if [ ! -d "${QT_HOST}" ]; then
+            for alt in "${RUNNER_WORKSPACE}/Qt/6.8.3/linux_gcc_64" "${RUNNER_WORKSPACE}/Qt/6.8.3/gcc_64"; do
+              if [ -d "${alt}" ]; then
+                QT_HOST="${alt}"
+                break
+              fi
+            done
           fi
-          "$QT_CMAKE" -S . -B build \\
-            -DQT_HOST_PATH="$QT_HOST" \\
-            -DANDROID_SDK_ROOT="$ANDROID_SDK_ROOT" \\
-            -DANDROID_NDK_ROOT="$ANDROID_NDK_ROOT" \\
-            -DQT_ANDROID_ABIS="arm64-v8a" \\
-            -DCMAKE_BUILD_TYPE=Release
+          if [ ! -d "${QT_HOST}" ]; then
+            echo "::error::No se encontró Qt host en ${QT_HOST}" >&2
+            exit 1
+          fi
+
+          ANDROID_SDK_ROOT="${ANDROID_SDK_ROOT:-${ANDROID_HOME:-}}"
+          if [ -z "${ANDROID_SDK_ROOT}" ] || [ ! -d "${ANDROID_SDK_ROOT}" ]; then
+            echo "::error::ANDROID_SDK_ROOT no disponible" >&2
+            exit 1
+          fi
+
+          BUILD_TYPE="${{ inputs.build_type || 'Release' }}"
+
+          echo "QT_ROOT=${QT_ROOT}"
+          echo "QT_HOST=${QT_HOST}"
+          echo "BUILD_TYPE=${BUILD_TYPE}"
+
+          QT_CMAKE="${QT_ROOT}/bin/qt-cmake"
+          if [ ! -x "${QT_CMAKE}" ]; then
+            QT_CMAKE="$(command -v qt-cmake || true)"
+          fi
+          if [ -z "${QT_CMAKE}" ] || [ ! -x "${QT_CMAKE}" ]; then
+            echo "::error::qt-cmake no encontrado" >&2
+            exit 1
+          fi
+
+          "${QT_CMAKE}" -S . -B build \
+            -DQT_HOST_PATH="${QT_HOST}" \
+            -DANDROID_SDK_ROOT="${ANDROID_SDK_ROOT}" \
+            -DANDROID_NDK_ROOT="${ANDROID_NDK_ROOT}" \
+            -DQT_ANDROID_ABIS="arm64-v8a" \
+            -DCMAKE_BUILD_TYPE="${BUILD_TYPE}"
 
       - name: Build APK
         run: cmake --build build --target apk
+
+      - name: Sign APK (debug keystore)
+        run: |
+          set -euo pipefail
+          BT="/usr/local/lib/android/sdk/build-tools/34.0.0"
+          KS="${RUNNER_TEMP}/debug.keystore"
+          rm -f "${KS}"
+          keytool -genkeypair -v -keystore "${KS}" -storepass android -alias androiddebugkey \
+            -keypass android -keyalg RSA -keysize 2048 -validity 10000 \
+            -dname "CN=Android Debug,O=Android,C=US" >/dev/null 2>&1
+          mkdir -p build/signed-apk
+          shopt -s nullglob
+          for apk in build/android-build/*.apk; do
+            base="$(basename "${apk}")"
+            aligned="build/signed-apk/${base%.apk}-aligned.apk"
+            signed="build/signed-apk/${base}"
+            "${BT}/zipalign" -f -p 4 "${apk}" "${aligned}"
+            "${BT}/apksigner" sign --ks "${KS}" --ks-key-alias androiddebugkey \
+              --ks-pass pass:android --key-pass pass:android --out "${signed}" "${aligned}"
+            rm -f "${aligned}"
+          done
+          ls -lh build/signed-apk
 
       - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
           name: screenrecorder-apk
-          path: build/android-build/*.apk
+          path: build/signed-apk/*.apk

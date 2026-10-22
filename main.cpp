@@ -13,11 +13,10 @@ int main(int argc, char *argv[])
     QQmlApplicationEngine engine;
     engine.rootContext()->setContextProperty("recorder", &controller);
 
-    const QUrl url(QStringLiteral("qrc:/qt/qml/ScreenRecorder/Main.qml"));
     QObject::connect(&engine, &QQmlApplicationEngine::objectCreationFailed,
                      &app, []() { QCoreApplication::exit(-1); },
                      Qt::QueuedConnection);
-    engine.load(url);
+    engine.loadFromModule("ScreenRecorder", "Main");
 
     return app.exec();
 }

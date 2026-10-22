@@ -8,7 +8,7 @@
 #ifdef Q_OS_ANDROID
 #include <QJniObject>
 #include <QJniEnvironment>
-#include <QNativeInterface/QAndroidApplication>
+#include <QCoreApplication>
 #endif
 
 RecorderController::RecorderController(QObject *parent) : QObject(parent) {}
@@ -54,12 +54,7 @@ void RecorderController::toggleRecording()
 
     const QString path = outputPath();
 #ifdef Q_OS_ANDROID
-    QJniObject activity;
-#ifdef Q_OS_ANDROID
-    auto *androidApp = qGuiApp->nativeInterface<QNativeInterface::QAndroidApplication>();
-    if (androidApp)
-        activity = QJniObject(androidApp->context());
-#endif
+    QJniObject activity = QNativeInterface::QAndroidApplication::context();
     jboolean started = false;
     if (activity.isValid()) {
         QJniObject jpath = QJniObject::fromString(path);
