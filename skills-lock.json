@@ -1,0 +1,29 @@
+{
+  "version": 1,
+  "skills": {
+    "cpp-pro": {
+      "source": "farmage/opencode-skills",
+      "sourceType": "github",
+      "skillPath": "skills/cpp-pro/SKILL.md",
+      "computedHash": "0d4acd305b7f4afc6d62908e97deb1df3ea9fc8ff1bd5850db239adb2a3b45f2"
+    },
+    "devops-engineer": {
+      "source": "farmage/opencode-skills",
+      "sourceType": "github",
+      "skillPath": "skills/devops-engineer/SKILL.md",
+      "computedHash": "d63cac8726fdd2f25a865377f0f893283fb3e100b9b0762071a66a73d0998f5c"
+    },
+    "kotlin-specialist": {
+      "source": "farmage/opencode-skills",
+      "sourceType": "github",
+      "skillPath": "skills/kotlin-specialist/SKILL.md",
+      "computedHash": "a5331a6806a94ccfda29dc8f395c75750f080017c6ad31e567da5e84bee35410"
+    },
+    "qt-ui-design": {
+      "source": "theqtcompanyrnd/agent-skills",
+      "sourceType": "github",
+      "skillPath": "skills/qt-ui-design/SKILL.md",
+      "computedHash": "971e8ad62ac9d66d13a634cc8aad1b2d284276da6b8501a2307b1dfcb6018649"
+    }
+  }
+}
