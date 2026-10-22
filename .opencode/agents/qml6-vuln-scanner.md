@@ -1,5 +1,5 @@
 ---
-description: Buscador de vulnerabilidades en QML6: inyección, exposición de datos, permisos, rendimiento inseguro y configuración.
+description: "Buscador de vulnerabilidades en QML6: inyección, exposición de datos, permisos, rendimiento inseguro y configuración."
 mode: subagent
 temperature: 0.1
 permission:

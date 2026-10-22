@@ -1,5 +1,5 @@
 ---
-description: Experto en diseño de interfaces y UI con QML6 para aplicaciones móviles. Crea layouts responsivos, componentes y estilos siguiendo buenas prácticas.
+description: "Experto en diseño de interfaces y UI con QML6 para aplicaciones móviles. Crea layouts responsivos, componentes y estilos siguiendo buenas prácticas."
 mode: subagent
 temperature: 0.3
 permission:
