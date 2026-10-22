@@ -116,8 +116,30 @@ jobs:
       - name: Build APK
         run: cmake --build build --target apk
 
+      - name: Sign APK (debug keystore)
+        run: |
+          set -euo pipefail
+          BT="/usr/local/lib/android/sdk/build-tools/34.0.0"
+          KS="${RUNNER_TEMP}/debug.keystore"
+          rm -f "${KS}"
+          keytool -genkeypair -v -keystore "${KS}" -storepass android -alias androiddebugkey \
+            -keypass android -keyalg RSA -keysize 2048 -validity 10000 \
+            -dname "CN=Android Debug,O=Android,C=US" >/dev/null 2>&1
+          mkdir -p build/signed-apk
+          shopt -s nullglob
+          for apk in build/android-build/*.apk; do
+            base="$(basename "${apk}")"
+            aligned="build/signed-apk/${base%.apk}-aligned.apk"
+            signed="build/signed-apk/${base}"
+            "${BT}/zipalign" -f -p 4 "${apk}" "${aligned}"
+            "${BT}/apksigner" sign --ks "${KS}" --ks-key-alias androiddebugkey \
+              --ks-pass pass:android --key-pass pass:android --out "${signed}" "${aligned}"
+            rm -f "${aligned}"
+          done
+          ls -lh build/signed-apk
+
       - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
           name: screenrecorder-apk
-          path: build/android-build/*.apk
+          path: build/signed-apk/*.apk
