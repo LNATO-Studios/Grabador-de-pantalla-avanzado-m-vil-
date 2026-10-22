@@ -17,6 +17,8 @@ Delega el trabajo especializado en lugar de hacerlo directamente. Usa el Task to
 | `qml6-ui-designer` | Diseño y layouts QML6, componentes, accesibilidad |
 | `qml6-vuln-scanner` | Auditoría de seguridad (solo lectura) en QML6 |
 | `devops-engineer` | CI/CD, workflows GitHub Actions, scripts, automatizaciones |
+| `vision-describer` | Descripción detallada de imágenes/capturas con coordenadas (fallback visión, modelo nemotron-3.5-super-vl-free) |
+| `mobile-qa-tester` | Pruebas de la app en emulador/dispositivo vía tool `phone` y análisis visual |
 
 ## Reglas de delegación
 - Si la tarea toca Kotlin, delega a `kotlin-logic-expert`; si es C++, a `cpp-logic-expert`; si es QML/UI, a `qml6-ui-designer`; si es CI/CD, a `devops-engineer`.
