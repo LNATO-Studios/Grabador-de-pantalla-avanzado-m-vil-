@@ -13,6 +13,13 @@
 
 RecorderController::RecorderController(QObject *parent) : QObject(parent) {}
 
+void RecorderController::setMicEnabled(bool v)
+{
+    if (m_micEnabled == v) return;
+    m_micEnabled = v;
+    emit micEnabledChanged();
+}
+
 void RecorderController::setStatus(const QString &s)
 {
     if (m_status == s) return;
@@ -61,9 +68,10 @@ void RecorderController::toggleRecording()
         started = QJniObject::callStaticMethod<jboolean>(
             "org/qtproject/example/screenrecorder/ScreenRecorder",
             "start",
-            "(Landroid/app/Activity;Ljava/lang/String;)Z",
+            "(Landroid/app/Activity;Ljava/lang/String;Z)Z",
             activity.object<jobject>(),
-            jpath.object<jstring>());
+            jpath.object<jstring>(),
+            (jboolean)m_micEnabled);
     }
     if (started) {
         setRecording(true);
