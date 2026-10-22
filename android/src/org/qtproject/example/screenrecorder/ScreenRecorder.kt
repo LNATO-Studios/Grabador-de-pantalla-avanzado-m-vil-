@@ -239,6 +239,10 @@ object ScreenRecorder {
     }
 
     fun stop() {
+        if (!recording && mediaProjection == null && muxer == null) {
+            pendingOutputPath = null
+            return
+        }
         recording = false
         audioThread?.join(3000)
         audioThread = null
@@ -246,18 +250,18 @@ object ScreenRecorder {
         virtualDisplay = null
         inputSurface?.release()
         inputSurface = null
-        videoEncoder?.stop()
+        try { videoEncoder?.stop() } catch (_: Exception) {}
         videoEncoder?.release()
         videoEncoder = null
-        audioEncoder?.stop()
+        try { audioEncoder?.stop() } catch (_: Exception) {}
         audioEncoder?.release()
         audioEncoder = null
-        audioRecord?.stop()
+        try { audioRecord?.stop() } catch (_: Exception) {}
         audioRecord?.release()
         audioRecord = null
         synchronized(lock) {
-            if (muxerStarted) muxer?.stop()
-            muxer?.release()
+            if (muxerStarted) try { muxer?.stop() } catch (_: Exception) {}
+            try { muxer?.release() } catch (_: Exception) {}
         }
         muxer = null
         mediaProjection?.stop()
@@ -265,5 +269,6 @@ object ScreenRecorder {
         videoTrackIndex = -1
         audioTrackIndex = -1
         muxerStarted = false
+        pendingOutputPath = null
     }
 }
