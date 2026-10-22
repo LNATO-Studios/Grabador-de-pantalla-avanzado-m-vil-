@@ -1,5 +1,5 @@
 ---
-description: Experto en lógica C++ para apps móviles: rendimiento, memoria, concurrencia, build y seguridad.
+description: "Experto en lógica C++ para apps móviles: rendimiento, memoria, concurrencia, build y seguridad."
 mode: subagent
 temperature: 0.2
 permission:

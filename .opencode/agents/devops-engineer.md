@@ -1,5 +1,5 @@
 ---
-description: Experto DevOps: crea y corrige scripts, GitHub Actions, CI/CD y automatizaciones del repositorio.
+description: "Experto DevOps: crea y corrige scripts, GitHub Actions, CI/CD y automatizaciones del repositorio."
 mode: subagent
 temperature: 0.2
 permission:

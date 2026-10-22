@@ -1,5 +1,5 @@
 ---
-description: Buscador de vulnerabilidades en código Kotlin: análisis estático, OWASP Mobile, secretos, inyección, permisos y configuración insegura.
+description: "Buscador de vulnerabilidades en código Kotlin: análisis estático, OWASP Mobile, secretos, inyección, permisos y configuración insegura."
 mode: subagent
 temperature: 0.1
 permission:

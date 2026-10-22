@@ -1,5 +1,5 @@
 ---
-description: Experto en lógica Kotlin para apps móviles: APIs nativas, coroutines, arquitectura, interop con C++/JNI y seguridad.
+description: "Experto en lógica Kotlin para apps móviles: APIs nativas, coroutines, arquitectura, interop con C++/JNI y seguridad."
 mode: subagent
 temperature: 0.2
 permission:

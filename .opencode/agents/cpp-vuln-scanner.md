@@ -1,5 +1,5 @@
 ---
-description: Buscador de vulnerabilidades en C++: memoria, UB, inyección, dependencias y configuración insegura.
+description: "Buscador de vulnerabilidades en C++: memoria, UB, inyección, dependencias y configuración insegura."
 mode: subagent
 temperature: 0.1
 permission:
