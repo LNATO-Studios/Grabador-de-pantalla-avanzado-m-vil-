@@ -7,6 +7,7 @@ buildscript {
     dependencies {
         //noinspection AndroidGradlePluginVersion
         classpath 'com.android.tools.build:gradle:9.2.1'
+        classpath 'org.jetbrains.kotlin:kotlin-gradle-plugin:2.0.21'
     }
 }
 
@@ -16,6 +17,7 @@ repositories {
 }
 
 apply plugin: qtGradlePluginType
+apply plugin: 'kotlin-android'
 
 dependencies {
     implementation fileTree(dir: 'libs', include: ['*.jar', '*.aar'])
@@ -39,12 +41,7 @@ android {
      *******************************************************/
 
     namespace = androidPackageName
-    def _compileSdkRaw = androidCompileSdkVersion.toString()
-    def _compileSdkBase = _compileSdkRaw.replace('android-', '').split('-')[0].toInteger()
-    compileSdk _compileSdkBase
-    if (_compileSdkRaw.contains('-ext')) {
-        compileSdkExtension _compileSdkRaw.split('-ext')[1].toInteger()
-    }
+    compileSdkVersion androidCompileSdkVersion
     buildToolsVersion androidBuildToolsVersion
     ndkVersion = androidNdkVersion
 
@@ -82,7 +79,7 @@ android {
 
     packagingOptions {
         jniLibs {
-            useLegacyPackaging = (project.findProperty('legacyPackaging') ?: 'true').toBoolean()
+            useLegacyPackaging = legacyPackaging.toBoolean()
         }
     }
 
