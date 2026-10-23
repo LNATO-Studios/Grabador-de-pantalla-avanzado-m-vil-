@@ -43,6 +43,7 @@ jobs:
           set -euo pipefail
           yes | sdkmanager --licenses >/dev/null 2>&1 || true
           sdkmanager "platforms;android-34" "build-tools;34.0.0" "ndk;26.1.10909125"
+          # Eliminar plataformas superiores para que Qt use únicamente android-34
           echo "ANDROID_NDK_ROOT=$ANDROID_SDK_ROOT/ndk/26.1.10909125" >> "$GITHUB_ENV"
 
       - name: Install Qt 6.8.3 for Android
