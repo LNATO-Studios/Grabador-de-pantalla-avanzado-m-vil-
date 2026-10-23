@@ -4,6 +4,10 @@
 #include <QObject>
 #include <QString>
 
+#ifdef Q_OS_ANDROID
+#include <jni.h>
+#endif
+
 class RecorderController : public QObject
 {
     Q_OBJECT
@@ -11,6 +15,8 @@ class RecorderController : public QObject
     Q_PROPERTY(QString status READ status NOTIFY statusChanged)
     Q_PROPERTY(bool micEnabled READ micEnabled WRITE setMicEnabled NOTIFY micEnabledChanged)
 public:
+    static RecorderController* s_instance;
+
     explicit RecorderController(QObject *parent = nullptr);
 
     bool isRecording() const { return m_recording; }
@@ -25,6 +31,9 @@ signals:
     void statusChanged();
     void micEnabledChanged();
 
+private slots:
+    void handleRecordingStarted();
+
 private:
     void setStatus(const QString &s);
     void setRecording(bool v);
@@ -34,5 +43,9 @@ private:
     QString m_status = QStringLiteral("Listo para grabar");
     bool m_micEnabled = true;
 };
+
+#ifdef Q_OS_ANDROID
+extern "C" JNIEXPORT void JNICALL Java_org_qtproject_example_screenrecorder_ScreenRecorder_nativeOnRecordingStarted(JNIEnv *env, jclass clazz);
+#endif
 
 #endif // RECORDERCONTROLLER_H

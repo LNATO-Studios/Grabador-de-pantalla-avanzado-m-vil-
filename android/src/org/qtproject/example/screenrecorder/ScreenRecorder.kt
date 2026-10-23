@@ -45,17 +45,26 @@ object ScreenRecorder {
     private var micEnabled: Boolean = true
     private var pendingMicEnabled: Boolean = true
 
+    @JvmStatic
+    external fun nativeOnRecordingStarted()
+
+    fun isRecording(): Boolean = recording
+
     fun start(activity: Activity, outputPath: String, micEnabled: Boolean = true): Boolean {
         this.pendingMicEnabled = micEnabled
-        if (mediaProjectionManager == null) {
-            mediaProjectionManager = activity.getSystemService(Context.MEDIA_PROJECTION_SERVICE) as MediaProjectionManager
-        }
         if (mediaProjection == null) {
             pendingOutputPath = outputPath
-            activity.startActivityForResult(mediaProjectionManager!!.createScreenCaptureIntent(), REQUEST_CODE)
+            activity.runOnUiThread {
+                if (mediaProjectionManager == null) {
+                    mediaProjectionManager = activity.getSystemService(Context.MEDIA_PROJECTION_SERVICE) as MediaProjectionManager
+                }
+                activity.startActivityForResult(mediaProjectionManager!!.createScreenCaptureIntent(), REQUEST_CODE)
+            }
             return false
         }
-        startCapture(activity, mediaProjection!!, outputPath, micEnabled)
+        activity.runOnUiThread {
+            startCapture(activity, mediaProjection!!, outputPath, micEnabled)
+        }
         return true
     }
 
@@ -166,6 +175,8 @@ object ScreenRecorder {
             val buffer = ByteArray(bufSize)
             val info = MediaCodec.BufferInfo()
             val startNanos = System.nanoTime()
+            val aRecord = audioRecord!!
+            val aEnc = audioEncoder!!
             while (recording) {
                 val read = aRecord.read(buffer, 0, buffer.size)
                 if (read > 0) {
@@ -211,6 +222,10 @@ object ScreenRecorder {
         }
         thread.start()
         audioThread = thread
+        }
+        try {
+            nativeOnRecordingStarted()
+        } catch (_: UnsatisfiedLinkError) {
         }
     }
 
