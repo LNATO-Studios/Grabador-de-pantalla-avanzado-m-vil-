@@ -116,7 +116,7 @@ jobs:
             -DCMAKE_BUILD_TYPE="${BUILD_TYPE}"
 
       - name: Build APK
-        run: cmake --build build --target apk
+        run: cmake --build build --target apk --verbose
 
       - name: Sign APK (debug keystore)
         run: |
