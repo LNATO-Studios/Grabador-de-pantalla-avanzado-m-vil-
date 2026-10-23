@@ -7,7 +7,6 @@ buildscript {
     dependencies {
         //noinspection AndroidGradlePluginVersion
         classpath 'com.android.tools.build:gradle:9.2.1'
-        classpath 'org.jetbrains.kotlin:kotlin-gradle-plugin:2.0.21'
     }
 }
 
@@ -17,7 +16,6 @@ repositories {
 }
 
 apply plugin: qtGradlePluginType
-apply plugin: 'kotlin-android'
 
 dependencies {
     implementation fileTree(dir: 'libs', include: ['*.jar', '*.aar'])
@@ -41,7 +39,7 @@ android {
      *******************************************************/
 
     namespace = androidPackageName
-    compileSdkVersion androidCompileSdkVersion
+    compileSdk androidCompileSdkVersion.toInteger()
     buildToolsVersion androidBuildToolsVersion
     ndkVersion = androidNdkVersion
 
