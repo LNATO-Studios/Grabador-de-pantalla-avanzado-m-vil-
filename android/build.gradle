@@ -39,7 +39,12 @@ android {
      *******************************************************/
 
     namespace = androidPackageName
-    compileSdk androidCompileSdkVersion.toInteger()
+    def _compileSdkRaw = androidCompileSdkVersion.toString()
+    def _compileSdkBase = _compileSdkRaw.replace('android-', '').split('-')[0].toInteger()
+    compileSdk _compileSdkBase
+    if (_compileSdkRaw.contains('-ext')) {
+        compileSdkExtension _compileSdkRaw.split('-ext')[1].toInteger()
+    }
     buildToolsVersion androidBuildToolsVersion
     ndkVersion = androidNdkVersion
 

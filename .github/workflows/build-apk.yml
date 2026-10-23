@@ -43,6 +43,8 @@ jobs:
           set -euo pipefail
           yes | sdkmanager --licenses >/dev/null 2>&1 || true
           sdkmanager "platforms;android-34" "build-tools;34.0.0" "ndk;26.1.10909125"
+          # Eliminar plataformas superiores para que Qt use únicamente android-34
+          find "$ANDROID_SDK_ROOT/platforms" -mindepth 1 -maxdepth 1 -type d ! -name 'android-34' -exec rm -rf {} + 2>/dev/null || true
           echo "ANDROID_NDK_ROOT=$ANDROID_SDK_ROOT/ndk/26.1.10909125" >> "$GITHUB_ENV"
 
       - name: Install Qt 6.8.3 for Android
@@ -112,6 +114,25 @@ jobs:
             -DANDROID_NDK_ROOT="${ANDROID_NDK_ROOT}" \
             -DQT_ANDROID_ABIS="arm64-v8a" \
             -DCMAKE_BUILD_TYPE="${BUILD_TYPE}"
+
+      - name: Patch build.gradle (compileSdk)
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          import re
+          p = 'build/android-build/build.gradle'
+          s = open(p).read()
+          # Normalizar cualquier variante de compileSdk a una forma robusta
+          s = re.sub(r'compileSdkVersion\s+androidCompileSdkVersion\b', 'compileSdkVersion androidCompileSdkVersion', s)
+          s = re.sub(r'compileSdk\s+androidCompileSdkVersion\.toInteger\(\)', 'def _compileSdkRaw = androidCompileSdkVersion.toString()\n    def _compileSdkBase = _compileSdkRaw.replace("android-", "").split("-")[0].toInteger()\n    compileSdk _compileSdkBase\n    if (_compileSdkRaw.contains("-ext")) { compileSdkExtension _compileSdkRaw.split("-ext")[1].toInteger() }', s)
+          # Si el archivo ya tiene la forma robusta, no hacer nada; si aún tiene .toInteger suelto, limpiar
+          if 'androidCompileSdkVersion.toInteger()' in s:
+              s = s.replace('compileSdk androidCompileSdkVersion.toInteger()',
+                            'def _compileSdkRaw = androidCompileSdkVersion.toString()\n    def _compileSdkBase = _compileSdkRaw.replace("android-", "").split("-")[0].toInteger()\n    compileSdk _compileSdkBase\n    if (_compileSdkRaw.contains("-ext")) { compileSdkExtension _compileSdkRaw.split("-ext")[1].toInteger() }')
+          open(p, 'w').write(s)
+          print('patched')
+          PY
+          grep -n "compileSdk" build/android-build/build.gradle
 
       - name: Build APK
         run: cmake --build build --target apk
