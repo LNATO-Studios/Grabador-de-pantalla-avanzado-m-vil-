@@ -1,0 +1,60 @@
+name: Protección de archivos de compilación
+
+on:
+  pull_request:
+    paths:
+      - 'build.gradle'
+      - 'settings.gradle'
+      - 'gradle/**'
+      - 'gradlew'
+      - 'gradlew.bat'
+      - 'android/build.gradle'
+      - 'android/settings.gradle'
+      - 'android/gradle/**'
+      - 'android/gradlew'
+      - 'android/gradlew.bat'
+      - 'CMakeLists.txt'
+
+permissions:
+  contents: read
+  pull-requests: write
+
+jobs:
+  protect:
+    name: Verificar archivos críticos de compilación
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Detectar eliminaciones o cambios sensibles
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+        run: |
+          set -euo pipefail
+          PROTECTED='^(build\.gradle|settings\.gradle|gradlew|gradlew\.bat|CMakeLists\.txt|gradle/.*|android/build\.gradle|android/settings\.gradle|android/gradlew|android/gradlew\.bat|android/gradle/.*)$'
+          CHANGED=$(git diff --name-status "$BASE_SHA" "$HEAD_SHA")
+          echo "$CHANGED"
+          DELETED=$(echo "$CHANGED" | awk '$1=="D"{print $2}' | grep -E "$PROTECTED" || true)
+          MODIFIED=$(echo "$CHANGED" | awk '$1 ~ /^(M|A)$/{print $2}' | grep -E "$PROTECTED" || true)
+
+          if [ -n "$DELETED" ]; then
+            MSG="⚠️ Se detectó la eliminación de archivos críticos de compilación en este PR:\n"
+            while IFS= read -r f; do MSG="$MSG- \`$f\`\n"; done <<< "$DELETED"
+            MSG="$MSG\nEstos archivos son necesarios para compilar el APK. Su eliminación requiere revisión explícita."
+            echo "::error::Se eliminaron archivos críticos de compilación."
+            gh pr comment "$PR_NUMBER" --body "$MSG" || true
+            exit 1
+          fi
+
+          if [ -n "$MODIFIED" ]; then
+            MSG="ℹ️ Se modificaron archivos críticos de compilación en este PR:\n"
+            while IFS= read -r f; do MSG="$MSG- \`$f\`\n"; done <<< "$MODIFIED"
+            MSG="$MSG\nRevise cuidadosamente antes de aprobar."
+            gh pr comment "$PR_NUMBER" --body "$MSG" || true
+          fi

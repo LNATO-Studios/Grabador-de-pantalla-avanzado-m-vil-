@@ -1,0 +1,13 @@
+# Archivos críticos de compilación requieren revisión
+/build.gradle @LuisAlejandro544
+/settings.gradle @LuisAlejandro544
+/CMakeLists.txt @LuisAlejandro544
+/gradle/ @LuisAlejandro544
+/gradlew @LuisAlejandro544
+/gradlew.bat @LuisAlejandro544
+/android/build.gradle @LuisAlejandro544
+/android/settings.gradle @LuisAlejandro544
+/android/gradle/ @LuisAlejandro544
+/android/gradlew @LuisAlejandro544
+/android/gradlew.bat @LuisAlejandro544
+/android/AndroidManifest.xml @LuisAlejandro544
