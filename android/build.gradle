@@ -82,7 +82,7 @@ android {
 
     packagingOptions {
         jniLibs {
-            useLegacyPackaging = legacyPackaging.toBoolean()
+            useLegacyPackaging = (project.findProperty('legacyPackaging') ?: 'true').toBoolean()
         }
     }
 
