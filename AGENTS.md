@@ -30,3 +30,9 @@ Delega el trabajo especializado en lugar de hacerlo directamente. Usa el Task to
 
 ## Permisos
 `permission.task` permite invocar todos los subagentes (`"*": "allow"`). Los usuarios también pueden invocarlos manualmente con `@nombre`.
+
+## Contexto técnico (proyecto)
+- Permiso de captura: el diálogo del sistema se dispara desde `ScreenRecorder.start()` vía `MediaProjectionManager.createScreenCaptureIntent()` dentro de `runOnUiThread`; el resultado lo recibe `MainActivity` y se delega a `ScreenRecorder.onActivityResult`.
+- Sincronización C++↔Kotlin: `nativeOnRecordingStarted()` (JNI) → `RecorderController::handleRecordingStarted()`.
+- CI emulador: usar imagen `x86_64` (no `x86`) para API 34.
+- Docs del proyecto: `README_AI.md`, `STRUCTURE.md`, `AI_CONTEXT.md`, `ROADMAP.md`.

@@ -42,17 +42,29 @@ object ScreenRecorder {
 
     @Volatile private var recording = false
     private var audioThread: Thread? = null
+    private var micEnabled: Boolean = true
+    private var pendingMicEnabled: Boolean = true
 
-    fun start(activity: Activity, outputPath: String): Boolean {
-        if (mediaProjectionManager == null) {
-            mediaProjectionManager = activity.getSystemService(Context.MEDIA_PROJECTION_SERVICE) as MediaProjectionManager
-        }
+    @JvmStatic
+    external fun nativeOnRecordingStarted()
+
+    fun isRecording(): Boolean = recording
+
+    fun start(activity: Activity, outputPath: String, micEnabled: Boolean = true): Boolean {
+        this.pendingMicEnabled = micEnabled
         if (mediaProjection == null) {
             pendingOutputPath = outputPath
-            activity.startActivityForResult(mediaProjectionManager!!.createScreenCaptureIntent(), REQUEST_CODE)
+            activity.runOnUiThread {
+                if (mediaProjectionManager == null) {
+                    mediaProjectionManager = activity.getSystemService(Context.MEDIA_PROJECTION_SERVICE) as MediaProjectionManager
+                }
+                activity.startActivityForResult(mediaProjectionManager!!.createScreenCaptureIntent(), REQUEST_CODE)
+            }
             return false
         }
-        startCapture(activity, mediaProjection!!, outputPath)
+        activity.runOnUiThread {
+            startCapture(activity, mediaProjection!!, outputPath, micEnabled)
+        }
         return true
     }
 
@@ -62,12 +74,13 @@ object ScreenRecorder {
             mediaProjection = mediaProjectionManager?.getMediaProjection(resultCode, data)
             val path = pendingOutputPath
             if (path != null && mediaProjection != null) {
-                startCapture(activity, mediaProjection!!, path)
+                startCapture(activity, mediaProjection!!, path, pendingMicEnabled)
             }
         }
     }
 
-    private fun startCapture(activity: Activity, projection: MediaProjection, outputPath: String) {
+    private fun startCapture(activity: Activity, projection: MediaProjection, outputPath: String, micEnabled: Boolean) {
+        this.micEnabled = micEnabled
         val metrics = activity.resources.displayMetrics
         val width = metrics.widthPixels
         val height = metrics.heightPixels
@@ -117,31 +130,33 @@ object ScreenRecorder {
         vEnc.start()
         videoEncoder = vEnc
 
-        // Audio
-        val audioFormat = AudioFormat.Builder()
-            .setSampleRate(44100)
-            .setChannelMask(AudioFormat.CHANNEL_IN_STEREO)
-            .setEncoding(AudioFormat.ENCODING_PCM_16BIT)
-            .build()
-        val captureConfig = AudioPlaybackCaptureConfiguration.Builder(projection)
-            .addMatchingUsage(AudioAttributes.USAGE_MEDIA)
-            .addMatchingUsage(AudioAttributes.USAGE_GAME)
-            .addMatchingUsage(AudioAttributes.USAGE_UNKNOWN)
-            .build()
-        val aRecord = AudioRecord.Builder()
-            .setAudioFormat(audioFormat)
-            .setBufferSizeInBytes(AudioRecord.getMinBufferSize(44100, AudioFormat.CHANNEL_IN_STEREO, AudioFormat.ENCODING_PCM_16BIT))
-            .setAudioPlaybackCaptureConfig(captureConfig)
-            .build()
-        audioRecord = aRecord
+        if (micEnabled) {
+            // Audio
+            val audioFormat = AudioFormat.Builder()
+                .setSampleRate(44100)
+                .setChannelMask(AudioFormat.CHANNEL_IN_STEREO)
+                .setEncoding(AudioFormat.ENCODING_PCM_16BIT)
+                .build()
+            val captureConfig = AudioPlaybackCaptureConfiguration.Builder(projection)
+                .addMatchingUsage(AudioAttributes.USAGE_MEDIA)
+                .addMatchingUsage(AudioAttributes.USAGE_GAME)
+                .addMatchingUsage(AudioAttributes.USAGE_UNKNOWN)
+                .build()
+            val aRecord = AudioRecord.Builder()
+                .setAudioFormat(audioFormat)
+                .setBufferSizeInBytes(AudioRecord.getMinBufferSize(44100, AudioFormat.CHANNEL_IN_STEREO, AudioFormat.ENCODING_PCM_16BIT))
+                .setAudioPlaybackCaptureConfig(captureConfig)
+                .build()
+            audioRecord = aRecord
 
-        val audioMediaFormat = MediaFormat.createAudioFormat(MediaFormat.MIMETYPE_AUDIO_AAC, 44100, 2)
-        audioMediaFormat.setInteger(MediaFormat.KEY_BIT_RATE, 128000)
-        audioMediaFormat.setInteger(MediaFormat.KEY_AAC_PROFILE, MediaCodecInfo.CodecProfileLevel.AACObjectLC)
-        val aEnc = MediaCodec.createEncoderByType(MediaFormat.MIMETYPE_AUDIO_AAC)
-        aEnc.configure(audioMediaFormat, null, null, MediaCodec.CONFIGURE_FLAG_ENCODE)
-        aEnc.start()
-        audioEncoder = aEnc
+            val audioMediaFormat = MediaFormat.createAudioFormat(MediaFormat.MIMETYPE_AUDIO_AAC, 44100, 2)
+            audioMediaFormat.setInteger(MediaFormat.KEY_BIT_RATE, 128000)
+            audioMediaFormat.setInteger(MediaFormat.KEY_AAC_PROFILE, MediaCodecInfo.CodecProfileLevel.AACObjectLC)
+            val aEnc = MediaCodec.createEncoderByType(MediaFormat.MIMETYPE_AUDIO_AAC)
+            aEnc.configure(audioMediaFormat, null, null, MediaCodec.CONFIGURE_FLAG_ENCODE)
+            aEnc.start()
+            audioEncoder = aEnc
+        }
 
         virtualDisplay = projection.createVirtualDisplay(
             "ScreenRecorder", width, height, dpi,
@@ -150,13 +165,18 @@ object ScreenRecorder {
         )
 
         recording = true
-        aRecord.startRecording()
+        if (micEnabled) {
+            audioRecord?.startRecording()
+        }
 
+        if (micEnabled) {
         val thread = Thread {
             val bufSize = AudioRecord.getMinBufferSize(44100, AudioFormat.CHANNEL_IN_STEREO, AudioFormat.ENCODING_PCM_16BIT)
             val buffer = ByteArray(bufSize)
             val info = MediaCodec.BufferInfo()
             val startNanos = System.nanoTime()
+            val aRecord = audioRecord!!
+            val aEnc = audioEncoder!!
             while (recording) {
                 val read = aRecord.read(buffer, 0, buffer.size)
                 if (read > 0) {
@@ -202,6 +222,11 @@ object ScreenRecorder {
         }
         thread.start()
         audioThread = thread
+        }
+        try {
+            nativeOnRecordingStarted()
+        } catch (_: UnsatisfiedLinkError) {
+        }
     }
 
     private fun drainAudio(encoder: MediaCodec, info: MediaCodec.BufferInfo) {
@@ -232,10 +257,11 @@ object ScreenRecorder {
     }
 
     private fun tryStartMuxer() {
-        if (!muxerStarted && videoTrackIndex >= 0 && audioTrackIndex >= 0) {
-            muxer?.start()
-            muxerStarted = true
-        }
+        if (muxerStarted) return
+        if (videoTrackIndex < 0) return
+        if (micEnabled && audioTrackIndex < 0) return
+        muxer?.start()
+        muxerStarted = true
     }
 
     fun stop() {

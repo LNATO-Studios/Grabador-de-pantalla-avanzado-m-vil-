@@ -4,6 +4,7 @@
 #include <QStandardPaths>
 #include <QDir>
 #include <QDateTime>
+#include <QMetaObject>
 
 #ifdef Q_OS_ANDROID
 #include <QJniObject>
@@ -11,7 +12,19 @@
 #include <QCoreApplication>
 #endif
 
-RecorderController::RecorderController(QObject *parent) : QObject(parent) {}
+RecorderController* RecorderController::s_instance = nullptr;
+
+RecorderController::RecorderController(QObject *parent) : QObject(parent)
+{
+    s_instance = this;
+}
+
+void RecorderController::setMicEnabled(bool v)
+{
+    if (m_micEnabled == v) return;
+    m_micEnabled = v;
+    emit micEnabledChanged();
+}
 
 void RecorderController::setStatus(const QString &s)
 {
@@ -25,6 +38,12 @@ void RecorderController::setRecording(bool v)
     if (m_recording == v) return;
     m_recording = v;
     emit recordingChanged();
+}
+
+void RecorderController::handleRecordingStarted()
+{
+    setRecording(true);
+    setStatus(QStringLiteral("Grabando..."));
 }
 
 QString RecorderController::outputPath() const
@@ -61,9 +80,10 @@ void RecorderController::toggleRecording()
         started = QJniObject::callStaticMethod<jboolean>(
             "org/qtproject/example/screenrecorder/ScreenRecorder",
             "start",
-            "(Landroid/app/Activity;Ljava/lang/String;)Z",
+            "(Landroid/app/Activity;Ljava/lang/String;Z)Z",
             activity.object<jobject>(),
-            jpath.object<jstring>());
+            jpath.object<jstring>(),
+            (jboolean)m_micEnabled);
     }
     if (started) {
         setRecording(true);
@@ -75,3 +95,14 @@ void RecorderController::toggleRecording()
     setStatus(QStringLiteral("Grabación solo disponible en Android"));
 #endif
 }
+
+#ifdef Q_OS_ANDROID
+extern "C" JNIEXPORT void JNICALL Java_org_qtproject_example_screenrecorder_ScreenRecorder_nativeOnRecordingStarted(JNIEnv *env, jclass clazz)
+{
+    Q_UNUSED(env);
+    Q_UNUSED(clazz);
+    if (RecorderController::s_instance) {
+        QMetaObject::invokeMethod(RecorderController::s_instance, "handleRecordingStarted", Qt::QueuedConnection);
+    }
+}
+#endif
