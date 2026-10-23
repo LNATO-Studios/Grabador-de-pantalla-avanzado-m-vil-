@@ -72,21 +72,6 @@ jobs:
             -DQT_ANDROID_ABIS="arm64-v8a" \
             -DCMAKE_BUILD_TYPE="Debug"
 
-      - name: Patch build.gradle (compileSdk)
-        run: |
-          set -euo pipefail
-          python3 - <<'PY'
-          import re
-          p = 'build/android-build/build.gradle'
-          s = open(p).read()
-          s = re.sub(r'compileSdk\s+androidCompileSdkVersion\.toInteger\(\)', 'def _compileSdkRaw = androidCompileSdkVersion.toString()\n    def _compileSdkBase = _compileSdkRaw.replace("android-", "").split("-")[0].toInteger()\n    compileSdk _compileSdkBase\n    if (_compileSdkRaw.contains("-ext")) { compileSdkExtension _compileSdkRaw.split("-ext")[1].toInteger() }', s)
-          if 'androidCompileSdkVersion.toInteger()' in s:
-              s = s.replace('compileSdk androidCompileSdkVersion.toInteger()',
-                            'def _compileSdkRaw = androidCompileSdkVersion.toString()\n    def _compileSdkBase = _compileSdkRaw.replace("android-", "").split("-")[0].toInteger()\n    compileSdk _compileSdkBase\n    if (_compileSdkRaw.contains("-ext")) { compileSdkExtension _compileSdkRaw.split("-ext")[1].toInteger() }')
-          open(p, 'w').write(s)
-          PY
-          grep -n "compileSdk" build/android-build/build.gradle
-
       - name: Build APK
         run: cmake --build build --target apk
 
